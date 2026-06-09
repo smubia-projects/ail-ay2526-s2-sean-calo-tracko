@@ -65,7 +65,9 @@ def build_app():
     # ── Global Authorization Check ──
     async def global_auth_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
-        if user and not await is_authorized(user.id):
+        if not user:
+            return
+        if not await is_authorized(user.id):
             if update.effective_message:
                 await update.effective_message.reply_text(
                     "🚫 *Access Denied*\n\nYou are not authorized to use this bot.",
@@ -74,6 +76,8 @@ def build_app():
             elif update.callback_query:
                 await update.callback_query.answer("Access denied.", show_alert=True)
             raise ApplicationHandlerStop()
+        from database import ensure_user_exists
+        await ensure_user_exists(user.id, user.full_name or "")
 
     app.add_handler(MessageHandler(filters.ALL, global_auth_check), group=-2)
     app.add_handler(CallbackQueryHandler(global_auth_check), group=-2)

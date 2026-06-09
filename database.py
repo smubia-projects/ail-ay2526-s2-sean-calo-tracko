@@ -27,6 +27,18 @@ async def get_user(telegram_id: int) -> Optional[dict]:
         await conn.close()
 
 
+async def ensure_user_exists(telegram_id: int, name: str = "") -> None:
+    """Create a minimal users row if one doesn't exist (satisfies FK constraints)."""
+    conn = await _get_conn()
+    try:
+        await conn.execute(
+            "INSERT INTO users (telegram_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            telegram_id, name,
+        )
+    finally:
+        await conn.close()
+
+
 async def upsert_user(telegram_id: int, **fields) -> None:
     """Create or update a user profile."""
     from datetime import timezone
