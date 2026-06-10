@@ -15,7 +15,40 @@ from telegram.ext import (
 
 from ai_service import estimate_calories_from_text, estimate_calories_from_image, refine_estimate
 from database import log_meal, save_meal, get_meals_for_date, get_user
+from rate_limit import check_estimate_limit
 from utils import format_estimate_message, format_progress_bar, MENU_BUTTONS_REGEX, get_now_sgt
+
+PAUSED_MSG = (
+    "⏸️ *Demo paused*\n\n"
+    "This demo is temporarily paused. Please check back soon!"
+)
+
+_RATE_LIMIT_BUTTONS = InlineKeyboardMarkup([
+    [InlineKeyboardButton("Join AI Lodge", url="https://www.smubia.com/ai-lodge")],
+    [InlineKeyboardButton("View source on GitHub", url="https://github.com/smubia-projects/ail-ay2526-s2-sean-calo-tracko")],
+    [InlineKeyboardButton("Explore other projects", url="https://www.smubia.com/showcase")],
+])
+
+
+async def _estimate_limit_blocked(update: Update) -> bool:
+    """Reply with the right notice and return True if this AI estimate is blocked."""
+    state, limit = check_estimate_limit(update.effective_user.id)
+    if state == "killed":
+        await update.message.reply_text(PAUSED_MSG, parse_mode="Markdown")
+        return True
+    if state == "limited":
+        msg = (
+            "⚠️ *Rate limit reached*\n\n"
+            "🍽️ *You've tasted the full experience!*\n"
+            f"You've used all {limit} free AI estimates included with this demo. "
+            "Want to keep going? Self-host your own copy or join AI Lodge "
+            "to build projects like this!"
+        )
+        await update.message.reply_text(
+            msg, parse_mode="Markdown", reply_markup=_RATE_LIMIT_BUTTONS,
+        )
+        return True
+    return False
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +85,8 @@ async def init_log_meal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def handle_food_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle a food photo sent by the user."""
+    if await _estimate_limit_blocked(update):
+        return ConversationHandler.END
     msg = await update.message.reply_text("📸 Analyzing your food photo... ⏳")
 
     try:
@@ -88,8 +123,10 @@ async def handle_food_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     text = update.message.text.strip()
     logger.info(f"Food text received: '{text}'")
 
-    # Don't process if it's empty
     if not text:
+        return ConversationHandler.END
+
+    if await _estimate_limit_blocked(update):
         return ConversationHandler.END
 
     msg = await update.message.reply_text("🔍 Estimating calories... ⏳")
@@ -143,7 +180,7 @@ async def handle_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         user = await get_user(user_id)
         today_meals = await get_meals_for_date(user_id, get_now_sgt())
         total_cal = sum(m["calories"] for m in today_meals)
-        goal = user.get("daily_calorie_goal", 2000) if user else 2000
+        goal = (user.get("daily_calorie_goal") or 2000) if user else 2000
         remaining = max(goal - total_cal, 0)
 
         await query.edit_message_text(
@@ -193,6 +230,9 @@ async def handle_refine_input(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if not estimate:
         await update.message.reply_text("⚠️ Session expired. Please send your food again.")
+        return ConversationHandler.END
+
+    if await _estimate_limit_blocked(update):
         return ConversationHandler.END
 
     msg = await update.message.reply_text("🔄 Re-estimating with your feedback... ⏳")
@@ -266,7 +306,7 @@ async def handle_save_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user = await get_user(user_id)
     today_meals = await get_meals_for_date(user_id, get_now_sgt())
     total_cal = sum(m["calories"] for m in today_meals)
-    goal = user.get("daily_calorie_goal", 2000) if user else 2000
+    goal = (user.get("daily_calorie_goal") or 2000) if user else 2000
     remaining = max(goal - total_cal, 0)
 
     await update.message.reply_text(
