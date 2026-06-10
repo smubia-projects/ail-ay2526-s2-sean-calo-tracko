@@ -24,10 +24,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "I help you track your daily calorie intake using AI.\n"
         "Just send me a *photo* or *text description* of your food "
         "and I'll estimate the calories and macros!\n\n"
-        "🚀 *Quick Start:*\n"
-        "1️⃣ Set up your profile with 👤 Profile\n"
-        "2️⃣ Send a food photo or description to log a meal\n"
-        "3️⃣ Tap 📊 Today to check your progress!"
+        "📋 *Commands:*\n"
+        "🍱 /log — Log a meal (text or photo)\n"
+        "📊 /today — Check today's progress\n"
+        "📈 /week — See weekly history\n"
+        "👤 /profile — View or update your settings\n"
+        "📋 /saved — Browse your saved meals\n"
+        "🎯 /goal — View or set your calorie goal\n"
+        "📜 /history — View a past date\n"
+        "🔔 /reminder — Set meal reminders"
     )
     await update.message.reply_text(
         welcome, parse_mode="Markdown", reply_markup=MENU_KEYBOARD
