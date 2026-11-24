@@ -25,7 +25,7 @@ PAUSED_MSG = (
 
 _RATE_LIMIT_BUTTONS = InlineKeyboardMarkup([
     [InlineKeyboardButton("Join AI Lodge", url="https://smu.opine.asia/survey?id=d9968e73-86c2-42e2-a2b9-fa7ef7289a3c")],
-    [InlineKeyboardButton("Explore other projects", url="https://www.smubia.com/Projects")],
+    [InlineKeyboardButton("Explore other projects", url="https://www.smubia.com/projects")],
     [InlineKeyboardButton("View on GitHub", url="https://github.com/smubia-projects/ail-ay2526-s2-sean-calo-tracko")],
 ])
 
